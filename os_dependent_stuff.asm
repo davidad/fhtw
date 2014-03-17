@@ -108,7 +108,3 @@
 
 default rel
 section .text
-global _start
-_start:       ; Some systems like "_start"
-global start
-start:        ; Some systems prefer "start"
