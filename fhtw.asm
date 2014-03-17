@@ -55,7 +55,48 @@ fhtw_free:
 
 global fhtw_set
 fhtw_set:
+  mov r11, [rdi]
+  cmp r11, [rdi + 8]
+  je table_full
   
+
+table_full:
+  mov rax, -1
+  ret
 
 global fhtw_get
 fhtw_get:
+  
+
+global fhtw_hash
+fhtw_hash:
+  xor rax, rax
+
+.begin:
+  cmp rsi, 8
+  jl .last_bits
+  crc32 rax, qword[rdi]
+  add rdi, 8
+  sub rsi, 8
+  jnz .begin
+
+  ret
+
+.last_bits:
+  ; zero out the higher bits of the last partial byte
+  ; r11 holds the last byte
+  mov r11, [rdi]                  
+
+  ; shift operator can only use cl, so put the number of bits remaining into rcx
+  mov rcx, rsi                    
+  shl rcx, 3                      ; multiply by 8 to get bits
+
+  ; rdx will hold the desired mask
+  mov rdx, 1
+  shl rdx, cl
+  dec rdx
+  and r11, rdx
+  crc32 rax, r11
+  
+  ret
+
