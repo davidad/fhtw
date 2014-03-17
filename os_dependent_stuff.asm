@@ -4,6 +4,7 @@
   %define SYSCALL_OPEN    2
   %define SYSCALL_WRITE   1
   %define SYSCALL_MMAP    9
+  %define SYSCALL_MUNMAP  11
   %define SYSCALL_PWRITE  18
   %define SYSCALL_FORK    57
   %define SYSCALL_WAITID  247
@@ -13,6 +14,7 @@
   %define SYSCALL_OPEN    0x2000005
   %define SYSCALL_WRITE   0x2000004
   %define SYSCALL_MMAP    0x20000C5
+  %define SYSCALL_MUNMAP  0x2000049
   %define SYSCALL_PWRITE  0x200009A
   %define SYSCALL_FORK    0x2000002
   %define SYSCALL_WAITID  0x20000AD
