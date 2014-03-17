@@ -1,5 +1,44 @@
 %include "os_dependent_stuff.asm"
 
+%macro hash_function 5
+; clobbers rcx and all arguments
+; %1 = key pointer
+; %2 = key length
+; %3 = desired return register
+; %4 & 5 are scratch
+
+  xor %3, %3
+
+%%begin:
+  cmp %2, 8
+  jl %%last_bits
+  crc32 %3, qword[%1]
+  add %1, 8
+  sub %2, 8
+  jnz %%begin
+
+  jmp %%ret
+
+%%last_bits:
+  ; zero out the higher bits of the last partial byte
+  ; r11 holds the last byte
+  mov %4, [%1]                  
+
+  ; shift operator can only use cl, so put the number of bits remaining into rcx
+  mov rcx, %2                    
+  shl rcx, 3                      ; multiply by 8 to get bits
+
+  ; rdx will hold the desired mask
+  mov %5, 1
+  shl %5, cl
+  dec %5
+  and %4, %5
+  crc32 %3, %4
+  
+%%ret:
+
+%endmacro
+
 
 global fhtw_new
 fhtw_new:
@@ -55,14 +94,38 @@ fhtw_free:
 
 global fhtw_set
 fhtw_set:
+  ; rdi = table pointer
+  ; rsi = key pointer
+  ; rdx = key length
+  ; rcx = value
+  ; r8 = value length?
+
+  ; make sure there is room in the table
   mov r11, [rdi]
   cmp r11, [rdi + 8]
-  je table_full
+  je .table_full
+
+  ; calculate hash
   
 
-table_full:
+  ; linear probe for empty space
+  
+  ; if empty space is within length of bitmap, insert
+
+  ; if space is too far away, hop the space back until it is close enough
+
+  ; when it's close enough, jump to insert
+
+  ; increase occupancy
+  
+  ret
+
+
+.table_full:
+  ; return error code
   mov rax, -1
   ret
+
 
 global fhtw_get
 fhtw_get:
@@ -70,33 +133,6 @@ fhtw_get:
 
 global fhtw_hash
 fhtw_hash:
-  xor rax, rax
-
-.begin:
-  cmp rsi, 8
-  jl .last_bits
-  crc32 rax, qword[rdi]
-  add rdi, 8
-  sub rsi, 8
-  jnz .begin
-
-  ret
-
-.last_bits:
-  ; zero out the higher bits of the last partial byte
-  ; r11 holds the last byte
-  mov r11, [rdi]                  
-
-  ; shift operator can only use cl, so put the number of bits remaining into rcx
-  mov rcx, rsi                    
-  shl rcx, 3                      ; multiply by 8 to get bits
-
-  ; rdx will hold the desired mask
-  mov rdx, 1
-  shl rdx, cl
-  dec rdx
-  and r11, rdx
-  crc32 rax, r11
-  
+  hash_function rdi, rsi, rax, rdx, r11
   ret
 
