@@ -47,6 +47,7 @@ fhtw_new:
 ; rdi is the size of the the table
 ; we need 3 pieces of metadata - occupancy, capacity, size of info word in bits
 ; and 3 arrays - keys, values, and hop info words
+; info word size does not change the amount of memory allocated; just says how many bits we use 
   inc rdi
   mov rax, 24
   mul rdi
@@ -98,7 +99,7 @@ fhtw_set:
   ; rsi = key pointer
   ; rdx = key length
   ; rcx = value
-  ; r8 = value length?
+  ; r8 = value length? -- used in function!
 
   ; make sure there is room in the table
   mov r11, [rdi]
@@ -106,11 +107,34 @@ fhtw_set:
   je .table_full
 
   ; calculate hash
-  
+  mov r8, rsi                              ; save key pointer in r8
+  mov r9, rcx                              ; save value in r9
+  hash_function rsi, rdx, rax, r11, r10
 
   ; linear probe for empty space
-  
+  div [rdi + 8]                             ; hash value is in rax, we divide by table size.  
+
+  shl rdx, 3                                ; get index in bits
+  add rdx, rdi      
+  add rdx, 24                               ; add rdi + 24 to get start of key array
+
+  .begin:
+    cmp qword[rdx], 0
+    je .end
+    add rdx, 8
+    jmp .begin
+  .end:
+     
+  ; empty space is in rdx
   ; if empty space is within length of bitmap, insert
+  
+  ; STUB just insert into empty space - linear probe table
+  mov [rdx], r8                             ; insert key
+  mov rax, [rdi + 8]                        ; next 3 lines calculate value position
+  shl rax, 3
+  add rax, rdx
+  mov [rax], r9                             ; insert value
+  
 
   ; if space is too far away, hop the space back until it is close enough
 
@@ -129,6 +153,49 @@ fhtw_set:
 
 global fhtw_get
 fhtw_get:
+  ; table in rdi
+  ; key in rsi
+  ; keylen in rdx
+
+; STUB linear probing
+
+  mov r8, rsi
+  mov r9, rdx
+  hash_function rsi, rdx, rax, r10, r11
+  mov r10, rdi
+  
+  div [r10 + 8]                             ; hash value is in rax, we divide by table size.  
+
+  ; get pointer in the key array into rdx
+  shl rdx, 3                                ; get index in bits
+  add rdx, r10      
+  add rdx, 24                               ; add rdi + 24 to get start of key array
+
+  .begin:
+    ; if we've hit an empty space the key is not valid
+    cmp [rdx], 0
+    jz .fail
+
+    ; TODO loop back if we're at the end of the table
+    ; TODO return fail if we've reached our original position
+
+    ; repe cmps compares strings one byte at a time; it expects
+    ; rcx == strlen, rdi == str1, rsi == str2
+    ; clobbers all registers, so we have to reset them each time
+    mov rcx, r9                             
+    mov rdi, r8
+    mov rsi, [rdx]
+    repe cmps
+    
+    ; zero flag will be set if the two strings are equal
+
+    jz .success
+    add rdx, 8
+    jmp .begin
+  
+  .success:
+
+  .fail:
   
 
 global fhtw_hash
