@@ -9,7 +9,7 @@ fhtw.a: fhtw.o
 	nasm -felf64 $<
 
 test_%: test%.c fhtw.a
-	gcc -o $@ $^
+	gcc -std=c99 -o $@ $^
 
 clean:
 	rm -f *.o test_* fhtw.a

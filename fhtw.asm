@@ -159,25 +159,32 @@ fhtw_get:
 
 ; STUB linear probing
 
-  mov r8, rsi
-  mov r9, rdx
+  add rdi, 24                               ; rdi = start of key array
+
+  push r12
+  mov r12, [rdi - 16]                         ; r12 = size of hash table
+
+  mov r8, rsi ; key
+  mov r9, rdx ; keylen
   hash_function rsi, rdx, rax, r10, r11
-  mov r10, rdi
+  mov r10, rdi ; r10 = start of key array
   
-  div qword[r10 + 8]                             ; hash value is in rax, we divide by table size.  
+  div r12                                   ; hash value is in rax, we divide by table size.  
 
   ; get pointer in the key array into rdx
   shl rdx, 3                                ; get index in bits
   add rdx, r10      
-  add rdx, 24                               ; add rdi + 24 to get start of key array
+
+  mov rax, rdx                              ; store original position in rax
+
+  ; compute address of last value pointer
+  shl r12, 3
+  add r12, r10
 
   .begin:
     ; if we've hit an empty space the key is not valid
     cmp qword[rdx], 0
     jz .fail
-
-    ; TODO loop back if we're at the end of the table
-    ; TODO return fail if we've reached our original position
 
     ; repe cmps compares strings one byte at a time; it expects
     ; rcx == strlen, rdi == str1, rsi == str2
@@ -191,11 +198,29 @@ fhtw_get:
 
     jz .success
     add rdx, 8
+
+    ; if we're at the end of the table loop back to the beginning
+    cmp rdx, r12
+    cmovz rdx, r10
+    
+    ; if we have returned to our original position, table is full
+    cmp rdx, rax                          
+    je .fail
+
     jmp .begin
   
   .success:
-
+    ; key pointer address is in rdx - get value
+    mov rax, [r10 - 16]                     ; rax = number of elements in table
+    shl rax, 3
+    mov rax, [rax + rdx]                   ; value pointer in rax
+    pop r12
+    ret
+    
   .fail:
+    xor rax, rax
+    pop r12
+    ret
   
 
 global fhtw_hash
