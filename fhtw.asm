@@ -101,10 +101,13 @@ fhtw_set:
   ; rcx = value
   ; r8 = value length? -- used in function!
 
+
   ; make sure there is room in the table
   mov r11, [rdi]
   cmp r11, [rdi + 8]
   je .table_full
+
+  add rdi, 24                             ; rdi refers to beginning of key array
 
   ; calculate hash
   mov r8, rsi                              ; save key pointer in r8
@@ -112,16 +115,24 @@ fhtw_set:
   hash_function rsi, rdx, rax, r11, r10
 
   ; linear probe for empty space
-  div qword[rdi + 8]                             ; hash value is in rax, we divide by table size.  
+  div qword[rdi - 16]                        ; hash value is in rax, we divide by table size.  
 
   shl rdx, 3                                ; get index in bits
   add rdx, rdi      
-  add rdx, 24                               ; add rdi + 24 to get start of key array
+
+  mov rax, [rdi - 16]                       
+  shl rax, 3
+  add rax, rdi                              ; rax has the end of the key array
 
   .begin:
     cmp qword[rdx], 0
     je .end
     add rdx, 8
+    
+    ; if we're at the end, loop back to the beginning of key array
+    cmp rax, rdx
+    cmovz rdx, rdi
+
     jmp .begin
   .end:
      
@@ -130,10 +141,11 @@ fhtw_set:
   
   ; STUB just insert into empty space - linear probe table
   mov [rdx], r8                             ; insert key
-  mov rax, [rdi + 8]                        ; next 3 lines calculate value position
+  mov rax, [rdi - 16]                        ; next 3 lines calculate value position
   shl rax, 3
   add rax, rdx
   mov [rax], r9                             ; insert value
+  inc qword[rdi - 24]                            ; increment occupancy of table
   
 
   ; if space is too far away, hop the space back until it is close enough
@@ -142,6 +154,7 @@ fhtw_set:
 
   ; increase occupancy
   
+  xor rax, rax
   ret
 
 
