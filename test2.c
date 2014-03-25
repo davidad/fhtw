@@ -3,6 +3,8 @@
 #include "fhtw.h"
 
 int main(int argc, char* argv[]) {
+  printf("\nTest 2, testing hash function...\n\n");
+
   char* strings[] = {
     "bing bang boom we're going to the moon", "hello world", 
     "q", "q",
@@ -17,11 +19,4 @@ int main(int argc, char* argv[]) {
     printf("'%s' hashes to ", strings[i]);
     printf("%x\n", fhtw_hash(strings[i], strlen(strings[i])));
   }
-
-  char* str = "bing bang bo.m we're going to the moon";
-  for (int i = 0; i < 9; i++) {
-    printf("'%s' hashes to ", str);
-    printf("%x\n", fhtw_hash(str, 7 + i));
-  }
-  
 }
