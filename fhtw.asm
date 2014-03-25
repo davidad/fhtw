@@ -112,7 +112,7 @@ fhtw_set:
   hash_function rsi, rdx, rax, r11, r10
 
   ; linear probe for empty space
-  div [rdi + 8]                             ; hash value is in rax, we divide by table size.  
+  div qword[rdi + 8]                             ; hash value is in rax, we divide by table size.  
 
   shl rdx, 3                                ; get index in bits
   add rdx, rdi      
@@ -164,7 +164,7 @@ fhtw_get:
   hash_function rsi, rdx, rax, r10, r11
   mov r10, rdi
   
-  div [r10 + 8]                             ; hash value is in rax, we divide by table size.  
+  div qword[r10 + 8]                             ; hash value is in rax, we divide by table size.  
 
   ; get pointer in the key array into rdx
   shl rdx, 3                                ; get index in bits
@@ -173,7 +173,7 @@ fhtw_get:
 
   .begin:
     ; if we've hit an empty space the key is not valid
-    cmp [rdx], 0
+    cmp qword[rdx], 0
     jz .fail
 
     ; TODO loop back if we're at the end of the table
@@ -185,7 +185,7 @@ fhtw_get:
     mov rcx, r9                             
     mov rdi, r8
     mov rsi, [rdx]
-    repe cmps
+    repe cmpsb
     
     ; zero flag will be set if the two strings are equal
 
