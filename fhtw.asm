@@ -117,51 +117,142 @@ fhtw_set:
   ; linear probe for empty space
   div qword[rdi - 16]                        ; hash value is in rax, we divide by table size.  
 
-  shl rdx, 3                                ; get index in bits
-  add rdx, rdi      
+  shl rdx, 3                                ; get index in bytes
+  add rdx, rdi                              ; rdx holds a pointer to the current element 
 
   mov rax, [rdi - 16]                       
   shl rax, 3
   add rax, rdi                              ; rax has the end of the key array
 
-  .begin:
+  xor rcx, rcx                              ; rcx will hold distance (in elements) from the original hash
+
+  .begin_probe:
     cmp qword[rdx], 0
-    je .end
+    je .end_probe
     add rdx, 8
+    inc rcx
     
     ; if we're at the end, loop back to the beginning of key array
     cmp rax, rdx
     cmovz rdx, rdi
 
-    jmp .begin
-  .end:
+    jmp .begin_probe
+  .end_probe:
      
-  ; empty space is in rdx
-  ; if empty space is within length of bitmap, insert
-  
-  ; STUB just insert into empty space - linear probe table
-  mov [rdx], r8                             ; insert key
-  mov rax, [rdi - 16]                        ; next 3 lines calculate value position
-  shl rax, 3
-  add rax, rdx
-  mov [rax], r9                             ; insert value
-  inc qword[rdi - 24]                            ; increment occupancy of table
-  
+  ; found first empty space (pointer in rdx, displacement in rcx)
 
+  push r12
+  push r13
+
+  ; rdx is pointer - convert to index for hop loop
+  sub rdx, rdi
+  shr rdx, 3
+
+  ; not altered by hop loop
+  ; r8 - key pointer
+  ; r9 - value pointer
+  ; rdi - beginning of key array
+  ; rax - beginning of value array (also end of key array :) )
+
+  ; altered by hop loop
+  ; rdx - index of empty space
+  ; rcx - current displacement in elements
+  ; r12 - seek index 
+  ;       after seek loop it shows where we are swapping the empty space to
+  ; r13 - seek mask - acceptable hop candidates (ie before original empty space)
+  ; r10 - beginning of hop info array
+  ; r11 - scratch
+
+  mov r10, [rdi - 16]
+  shl r10, 4
+  add r10, rdi
+
+  .begin_hop:
+    ; check whether it's too far
+    cmp rcx, [rdi - 8]
+    jl .insert
+    
+    ; find first available empty space
+
+    ; seek loop initialization
+    ; mask starts as all ones 
+    mov r13, -1
+    ; make r12 point at first candidate swap position
+    mov r12, rdx
+    sub r12, [rdi - 8]
+    inc r12
+    jns .begin_seek
+    ; if we've gone past the beginning of the table, wrap around
+    add r12, [rdi - 16]
+
+    .begin_seek:
+      test r13, [r10 + r12 * 8]              ; can we swap something that hashes to this value
+      jnz .end_seek
+      inc r12
+      shr r13 
+      jz .fail_seek                           ; barely possible - table needs resizing
+      jmp .begin_seek
+    .end_seek
+
+    mov r11, r13                            
+    neg r11
+    and r11, r13
+    or [r10 + r12 * 8], r11                 ; set bit in hopinfoword
+
+    ; r12 has the index of a hopinfo word that refers to a swappable element
+    ; calculate swappable element
+
+    bsf r13, [r10 + r12 * 8]
+    btr [r10 + r12 * 8], r13                ; clear bit of element to be moved
+    add r13, r12
+    cmp r13, [rdi - 16]
+    jl .continue
+    ; wrap around end of table
+    sub r13, [rdi - 16]
+    .continue:
+
+    ; r13 has the index of a swappable element
+    ; move key
+    mov r11, [rdi + r13 * 8]
+    mov [rdi + rdx * 8], r11
+
+    ; move value
+    mov r11, [rax + r13 * 8]
+    mov [rax + rdx * 8], r11
+
+    jmp .begin_hop
+
+  .end_hop
+
+  pop r13
+  pop r12
+  
   ; if space is too far away, hop the space back until it is close enough
 
   ; when it's close enough, jump to insert
 
-  ; increase occupancy
+  .insert:
+    mov [rdx], r8                             ; insert key
+    mov rax, [rdi - 16]                        ; next 3 lines calculate value position
+    shl rax, 3
+    add rax, rdx
+    mov [rax], r9                             ; insert value
+  
+  ; calculate address of bitmap
+  inc qword[rdi - 24]                            ; increment occupancy of table
   
   xor rax, rax
   ret
-
 
 .table_full:
   ; return error code
   mov rax, -1
   ret
+
+.fail_seek:
+  mov rax, -2
+  ret
+
 
 
 global fhtw_get

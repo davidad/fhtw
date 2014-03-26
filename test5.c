@@ -8,7 +8,10 @@
 
 int main() {
   setbuf(stdout, NULL);
-  printf("Test 5, testing ...");
+  printf("Test 5, testing set and get on big table...");
+
+  printf("\n");
+  printf("\n");
 
   fhtw foo = fhtw_new(SIZE);
   srand(1337);
