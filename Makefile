@@ -6,14 +6,17 @@ ifeq ($(uname),Linux)
 	format := elf64
 endif
 
+.PHONY: all clean test
 all: fhtw.o
 
 %.o:%.asm
 	nasm -f $(format) $<
 
-test_%: test%.c fhtw.o
+test: test_suite
+	./test_suite
+
+test_suite: test_suite.c fhtw.o
 	gcc -std=c99 -o $@ $^
 
-.PHONY: clean
 clean:
 	rm -f *.o test_*
