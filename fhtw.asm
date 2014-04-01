@@ -41,7 +41,9 @@
 
 
 global fhtw_new
+global _fhtw_new
 fhtw_new:
+_fhtw_new:
   push rdi ; store requested size for later
 
 ; rdi is the size of the the table
@@ -77,7 +79,9 @@ fhtw_new:
   
 
 global fhtw_free
+global _fhtw_free
 fhtw_free:
+_fhtw_free:
   ; put size of memory to be freed in rsi
   mov r11, [rdi + 8]
   inc r11
@@ -94,13 +98,17 @@ fhtw_free:
 
 
 global fhtw_set
+global _fhtw_set
 fhtw_set:
+_fhtw_set:
   ; rdi = table pointer
   ; rsi = key pointer
   ; rdx = key length
   ; rcx = value
   ; r8 = value length? -- used in function!
 
+  push r12
+  push r13
 
   ; make sure there is room in the table
   mov r11, [rdi]
@@ -140,9 +148,6 @@ fhtw_set:
   .end_probe:
      
   ; found first empty space (pointer in rdx, displacement in rcx)
-
-  push r12
-  push r13
 
   ; rdx is pointer - convert to index for hop loop
   sub rdx, rdi
@@ -213,21 +218,13 @@ fhtw_set:
     btr [r10 + r12 * 8], r13                ; clear bit of element to be moved
     add r13, r12
     cmp r13, [rdi - 16]
-    jl .continue
-    ; wrap around end of table
+    js .continue
     sub r13, [rdi - 16]
     .continue:
 
-    ; r13 has the index of a swappable element
-    ; rdx - index of blank space
-
-    ; move key
-    
-    mov r11, [rdi + r13 * 8]
+    mov r11, [rdi + r13 * 8]  ; swap key
     mov [rdi + rdx * 8], r11
-
-    ; move value
-    mov r11, [rax + r13 * 8]
+    mov r11, [rax + r13 * 8]  ; swap value
     mov [rax + rdx * 8], r11
 
     ; get index of hop info bit - the bit in the hopinfo word that needs to be set
@@ -244,17 +241,10 @@ fhtw_set:
 
   pop r13
   pop r12
-  
-  ; if space is too far away, hop the space back until it is close enough
-
-  ; when it's close enough, jump to insert
 
   .insert:
-    mov [rdx], r8                             ; insert key
-    mov rax, [rdi - 16]                        ; next 3 lines calculate value position
-    shl rax, 3
-    add rax, rdx
-    mov [rax], r9                             ; insert value
+    mov [rdi + rdx * 8], r8                             ; insert key
+    mov [rax + rdx * 8], r9                             ; insert value
 
   ; calculate address of bitmap
     sub rdx, rcx                              ; index of target
@@ -266,21 +256,26 @@ fhtw_set:
   inc qword[rdi - 24]                            ; increment occupancy of table
   
   xor rax, rax
-  ret
+  jmp .ret
 
 .table_full:
   ; return error code
   mov rax, -1
-  ret
+  jmp .ret
 
 .fail_seek:
   mov rax, -2
+.ret:
+  pop r13
+  pop r12
   ret
 
 
 
 global fhtw_get
+global _fhtw_get
 fhtw_get:
+_fhtw_get:
   ; table in rdi
   ; key in rsi
   ; keylen in rdx
@@ -352,7 +347,9 @@ fhtw_get:
   
 
 global fhtw_hash
+global _fhtw_hash
 fhtw_hash:
+_fhtw_hash:
   hash_function rdi, rsi, rax, rdx, r11
   ret
 
