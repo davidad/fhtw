@@ -10,10 +10,12 @@ int main() {
   char* result;
 
   for (int i = 0; i < sizeof(keys)/sizeof(char*); i++) {
+    printf("setting\n");
     fhtw_set(foo, keys[i], strlen(keys[i]), vals[i]);
   }
 
   for (int i = 0; i < sizeof(keys)/sizeof(char*); i++) {
+    printf("getting\n");
     result = (char*)fhtw_get(foo, keys[i], strlen(keys[i]));
     printf("pair %d is %s, %s\n", i, keys[i], result);
   }

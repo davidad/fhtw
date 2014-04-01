@@ -169,7 +169,7 @@ fhtw_set:
 
   .begin_hop:
     ; check whether it's too far
-    cmp rcx, [rdi - 8]
+    sub rcx, [rdi - 8]
     jl .insert
     
     ; find first available empty space
@@ -181,18 +181,25 @@ fhtw_set:
     mov r12, rdx
     sub r12, [rdi - 8]
     inc r12
+    inc rcx
     jns .begin_seek
     ; if we've gone past the beginning of the table, wrap around
     add r12, [rdi - 16]
 
     .begin_seek:
-      test r13, [r10 + r12 * 8]              ; can we swap something that hashes to this value
+      test r13, [r10 + r12 * 8]               ; can we swap something that hashes to this value
       jnz .end_seek
+      inc rcx
       inc r12
-      shr r13 
+      cmp r12, [rdi - 16]                     ; wrap around if at end of table
+      jnz .done_wrap
+      xor r12, r12
+    .done_wrap:
+      shr r13, 1 
       jz .fail_seek                           ; barely possible - table needs resizing
       jmp .begin_seek
-    .end_seek
+
+    .end_seek:
 
     mov r11, r13                            
     neg r11
@@ -212,7 +219,10 @@ fhtw_set:
     .continue:
 
     ; r13 has the index of a swappable element
+    ; rdx - index of blank space
+
     ; move key
+    
     mov r11, [rdi + r13 * 8]
     mov [rdi + rdx * 8], r11
 
@@ -220,9 +230,17 @@ fhtw_set:
     mov r11, [rax + r13 * 8]
     mov [rax + rdx * 8], r11
 
+    ; get index of hop info bit - the bit in the hopinfo word that needs to be set
+    sub rdx, r12
+    jns .end_wrap
+    add rdx, [rdi - 16]
+    .end_wrap: 
+    bts [r10 + r12 * 8], rdx                ; clear bit of element to be moved
+
+    mov rdx, r13                            ; empty space is now at r13
     jmp .begin_hop
 
-  .end_hop
+  .end_hop:
 
   pop r13
   pop r12
@@ -237,8 +255,14 @@ fhtw_set:
     shl rax, 3
     add rax, rdx
     mov [rax], r9                             ; insert value
-  
+
   ; calculate address of bitmap
+    sub rdx, rcx                              ; index of target
+    jns .end_wrap2
+    add rdx, [rdi - 16]
+    .end_wrap2:
+    bts [r10 + rdx * 8], rcx
+  
   inc qword[rdi - 24]                            ; increment occupancy of table
   
   xor rax, rax
