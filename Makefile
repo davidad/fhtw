@@ -1,16 +1,19 @@
-.PHONY: clean
+uname := $(shell uname)
+ifeq ($(uname),Darwin)
+	format := macho64
+endif
+ifeq ($(uname),Linux)
+	format := elf64
+endif
 
-all: fhtw.a
-
-fhtw.a: fhtw.o
-	ar rvs $@ fhtw.o
+all: fhtw.o
 
 %.o:%.asm
-	nasm -felf64 $<
+	nasm -f $(format) $<
 
-test_%: test%.c fhtw.a
+test_%: test%.c fhtw.o
 	gcc -std=c99 -o $@ $^
 
+.PHONY: clean
 clean:
-	rm -f *.o test_* fhtw.a
-
+	rm -f *.o test_*
