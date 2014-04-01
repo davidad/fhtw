@@ -49,7 +49,7 @@ static void allocate1000(void*arg) {
 
 TEST allocation_variables() {
   uint64_t* metadata = (uint64_t*)t;
-  printf("     Metadata words: %"PRIu64" %"PRIu64" %"PRIu64"\n",metadata[0],metadata[1],metadata[2]);
+  printf("     Metadata words: %llu %llu %llu\n",metadata[0],metadata[1],metadata[2]);
   ASSERT_EQm("First word of metadata, occupancy, should be 0 for a freshly allocated table",0,metadata[0]);
   ASSERT_EQm("Second word of metadata, capacity, should be 1000",1000,metadata[1]);
   ASSERT_EQm("Third word of metadata, hop-info word length, should be 9",9,metadata[2]);
@@ -75,7 +75,7 @@ TEST small_set_and_get_##NAME () { \
   const size_t n = sizeof(pairs)/sizeof(char*[2]); \
   int i; \
   for(i=0;i<n;i++) fhtw_set(t,pairs[i][0],strlen(pairs[i][0]),pairs[i][1]); \
-  for(i=0;i<n;i++) ASSERT_STR_EQ(pairs[i][1],fhtw_get(t,pairs[i][0],strlen(pairs[i][0]))); \
+  for(i=0;i<n;i++) ASSERT_EQ(pairs[i][1],fhtw_get(t,pairs[i][0],strlen(pairs[i][0]))); \
   fprintf(stdout,"     passed"); \
   fhtw_free(t); \
   PASS(); }
@@ -110,7 +110,7 @@ TEST big_set_and_get(uint64_t n_keys, uint64_t table_size, unsigned int seed) {
   char** keys = malloc(n_keys*sizeof(char*));
   char** vals = malloc(n_keys*sizeof(char*));
   const int p = n_keys / 100;
-  putchar('\n');
+  printf("\nInserting %llu keys into a table of size %llu:\n",n_keys,table_size);
   int i;
   for(i=0;i<n_keys;i++) {
     if(!(i%p)) putchar('v');
@@ -123,7 +123,9 @@ TEST big_set_and_get(uint64_t n_keys, uint64_t table_size, unsigned int seed) {
   putchar('\n');
   for(i=0;i<n_keys;i++) {
     if(!(i%p)) putchar('^');
-    ASSERT_STR_EQ(vals[i],fhtw_get(t,keys[i],BUF_SIZE));
+    ASSERT_EQ(vals[i],fhtw_get(t,keys[i],BUF_SIZE));
+  }
+  for(i=0;i<n_keys;i++) {
     free(keys[i]);
     free(vals[i]);
   }
@@ -134,8 +136,8 @@ TEST big_set_and_get(uint64_t n_keys, uint64_t table_size, unsigned int seed) {
 
 SUITE(set_and_get) {
   RUN_TEST(small_set_and_get_4_in_10);
-  //RUN_TEST(small_set_and_get_5_in_11);
-  for(int k = 400;k<1000;k+=50) RUN_TESTp(big_set_and_get,k*1e3,1e6,0x18a3);
+  RUN_TEST(small_set_and_get_5_in_11);
+  for(int k = 400;k<1000;k+=260) RUN_TESTp(big_set_and_get,k*1e3,1e6,0x18a3);
 }
 
 GREATEST_MAIN_DEFS();
