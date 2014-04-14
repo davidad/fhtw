@@ -142,26 +142,28 @@ TEST big_set_and_get(uint64_t n_keys, uint64_t table_size, unsigned int seed) {
   srand(seed);
   char** keys = malloc(n_keys*sizeof(char*));
   char** vals = malloc(n_keys*sizeof(char*));
-  const int p = n_keys / 100;
-  printf("\nInserting %llu keys into a table of size %llu:\n",n_keys,table_size);
+  const int p = n_keys / 74;
+  printf("\n-- testing %llu keys in a table of size %llu:\n",n_keys,table_size);
   int i;
+  printf("     ");
   for(i=0;i<n_keys;i++) {
-    if(!(i%p)) putchar('v');
+    if(!(i%p)) putchar('v'), fflush(stdout);
     keys[i]=malloc(BUF_SIZE);          vals[i]=malloc(BUF_SIZE);
     int key_rand = rand();             int val_rand = rand();
     snprintf(keys[i],BUF_SIZE,"key %d: %d",i,key_rand);
     snprintf(vals[i],BUF_SIZE,"val %d: %d",i,val_rand);
     fhtw_set(t,keys[i],BUF_SIZE,vals[i]);
   }
-  putchar('\n');
+  printf("\n     ");
   for(i=0;i<n_keys;i++) {
-    if(!(i%p)) putchar('^');
+    if(!(i%p)) putchar('^'), fflush(stdout);
     ASSERT_EQ(vals[i],fhtw_get(t,keys[i],BUF_SIZE));
   }
   for(i=0;i<n_keys;i++) {
     free(keys[i]);
     free(vals[i]);
   }
+  fprintf(stdout,"\n     passed");
   free(keys); free(vals);
   fhtw_free(t);
   PASS();
