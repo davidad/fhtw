@@ -185,11 +185,12 @@ _fhtw_set:
     ; make r12 point at first candidate swap position
     mov r12, rdx
     sub r12, [rdi - 8]
-    inc r12
-    inc rcx
-    jns .begin_seek
+    jns .skip_add
     ; if we've gone past the beginning of the table, wrap around
     add r12, [rdi - 16]
+    .skip_add:
+    inc r12
+    inc rcx
 
     .begin_seek:
       test r13, [r10 + r12 * 8]               ; can we swap something that hashes to this value
@@ -232,17 +233,13 @@ _fhtw_set:
     jns .end_wrap
     add rdx, [rdi - 16]
     .end_wrap: 
-    bts [r10 + r12 * 8], rdx                ; clear bit of element to be moved
+    bts [r10 + r12 * 8], rdx                ; set bit of formerly empty space
 
     mov rdx, r13                            ; empty space is now at r13
     jmp .begin_hop
 
-  .end_hop:
-
-  pop r13
-  pop r12
-
   .insert:
+    add rcx, [rdi - 8]
     mov [rdi + rdx * 8], r8                             ; insert key
     mov [rax + rdx * 8], r9                             ; insert value
 
@@ -341,7 +338,9 @@ _fhtw_get:
     ret
     
   .fail:
-    xor rax, rax
+    sub rdx, r10
+    shr rdx, 3
+    mov rax, rdx
     pop r12
     ret
   

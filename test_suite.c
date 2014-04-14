@@ -4,6 +4,7 @@
 #include "greatest.h"
 #include "fhtw.h"
 
+
 TEST hash_of_empty_string_is_zero() {
   char* empty_string = "";
   ASSERT_EQ(0,fhtw_hash(empty_string,strlen(empty_string)));
@@ -24,7 +25,7 @@ TEST hash_purity() {
   int i;
   unsigned int *hashes = malloc(sizeof(unsigned int)*n);
   for(i=0;i<n;i++)
-    hashes[i]=fhtw_hash(strings[i],strlen(strings[i]));
+    hashes[i]=fhtw_hash(strings[i],strlen(strings[i])+1);
   ASSERT_EQ(hashes[0],hashes[6]);
   ASSERT_EQ(hashes[1],hashes[10]);
   ASSERT_EQ(hashes[2],hashes[11]);
@@ -67,6 +68,14 @@ SUITE(allocation) {
   RUN_TEST(allocation_variables);
 }
 
+void dump_table() {
+  uint64_t *meta = (uint64_t*)t, *key = meta+3, *val = key+(meta[1]), *hop = val+(meta[1]);
+  printf("%016llx\n%016llx\n%016llx\n",meta[0],meta[1],meta[2]);
+  for(int i=0;i<meta[1];i++) {
+    printf("%016llx    %016llx    %016llx\n",key[i],val[i],hop[i]);
+  }
+}
+
 #define TEST_small_set_and_get(NAME) \
 TEST small_set_and_get_##NAME () { \
   fprintf(stdout, "\n-- test set_and_get_" #NAME " ... \n"); \
@@ -74,8 +83,13 @@ TEST small_set_and_get_##NAME () { \
   char* pairs[][2] = PAIRS; \
   const size_t n = sizeof(pairs)/sizeof(char*[2]); \
   int i; \
-  for(i=0;i<n;i++) fhtw_set(t,pairs[i][0],strlen(pairs[i][0]),pairs[i][1]); \
-  for(i=0;i<n;i++) ASSERT_EQ(pairs[i][1],fhtw_get(t,pairs[i][0],strlen(pairs[i][0]))); \
+  for(i=0;i<n;i++) fhtw_set(t,pairs[i][0],strlen(pairs[i][0])+1,pairs[i][1]); \
+  dump_table(); \
+  for(i=0;i<n;i++) { \
+    char* ret = fhtw_get(t,pairs[i][0],strlen(pairs[i][0])+1); \
+    printf("%7d=i %016llx=pairs[i][0] %016llx=pairs[i][1] %016llx=ret\n",i,(uint64_t)pairs[i][0],(uint64_t)pairs[i][1],(uint64_t)ret); \
+    ASSERT_EQ(pairs[i][1],ret); \
+  } \
   fprintf(stdout,"     passed"); \
   fhtw_free(t); \
   PASS(); }
@@ -88,10 +102,7 @@ TEST small_set_and_get_##NAME () { \
     { "Lorem ipsum dolor sit amet", "value 4"} \
 }
 TEST_small_set_and_get(4_in_10)
-#undef TABLE_SIZE
 #undef PAIRS
-
-#define TABLE_SIZE 11
 #define PAIRS { \
     { "", "value 0"}, \
     { "key 1", "value 1" }, \
@@ -99,9 +110,36 @@ TEST_small_set_and_get(4_in_10)
     { "eight88", "value 3" }, \
     { "Lorem ipsum dolor sit amet", "value 4"} \
 }
-TEST_small_set_and_get(5_in_11)
-#undef TABLE_SIZE
+TEST_small_set_and_get(5_in_10)
 #undef PAIRS
+#define PAIRS { \
+    { "Lorem ipsum", "dolor sit amet"}, \
+    { "dolor sit amet", "consecteuer"}, \
+    { "consecteteur", "adipiscing"}, \
+    { "adipiscing", "sed do"}, \
+    { "sed do", "eiusmod"}, \
+    { "eiusmod", "tempor"}, \
+    { "tempor", "incididunt ut labore"}, \
+    { "incididunt ut labore", "et dolore magna"}, \
+    { "", "aliquat"} \
+}
+TEST_small_set_and_get(9_in_10)
+#undef PAIRS
+#define PAIRS { \
+    { "Lorem ipsum", "dolor sit amet"}, \
+    { "dolor sit amet", "consecteuer"}, \
+    { "consecteteur", "adipiscing"}, \
+    { "adipiscing", "sed do"}, \
+    { "sed do", "eiusmod"}, \
+    { "eiusmod", "tempor"}, \
+    { "tempor", "incididunt ut labore"}, \
+    { "incididunt ut labore", "et dolore magna"}, \
+    { "et dolore magna", "aliqua"}, \
+    { "aliqua", "." } \
+}
+TEST_small_set_and_get(10_in_10)
+#undef PAIRS
+#undef TABLE_SIZE
 
 #define BUF_SIZE 64
 TEST big_set_and_get(uint64_t n_keys, uint64_t table_size, unsigned int seed) {
@@ -136,7 +174,9 @@ TEST big_set_and_get(uint64_t n_keys, uint64_t table_size, unsigned int seed) {
 
 SUITE(set_and_get) {
   RUN_TEST(small_set_and_get_4_in_10);
-  RUN_TEST(small_set_and_get_5_in_11);
+  RUN_TEST(small_set_and_get_5_in_10);
+  RUN_TEST(small_set_and_get_9_in_10);
+  RUN_TEST(small_set_and_get_10_in_10);
   for(int k = 400;k<1000;k+=260) RUN_TESTp(big_set_and_get,k*1e3,1e6,0x18a3);
 }
 
