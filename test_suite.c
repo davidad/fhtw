@@ -84,12 +84,7 @@ TEST small_set_and_get_##NAME () { \
   const size_t n = sizeof(pairs)/sizeof(char*[2]); \
   int i; \
   for(i=0;i<n;i++) fhtw_set(t,pairs[i][0],strlen(pairs[i][0])+1,pairs[i][1]); \
-  dump_table(); \
-  for(i=0;i<n;i++) { \
-    char* ret = fhtw_get(t,pairs[i][0],strlen(pairs[i][0])+1); \
-    printf("%7d=i %016llx=pairs[i][0] %016llx=pairs[i][1] %016llx=ret\n",i,(uint64_t)pairs[i][0],(uint64_t)pairs[i][1],(uint64_t)ret); \
-    ASSERT_EQ(pairs[i][1],ret); \
-  } \
+  for(i=0;i<n;i++) ASSERT_EQ(pairs[i][1],fhtw_get(t,pairs[i][0],strlen(pairs[i][0])+1)); \
   fprintf(stdout,"     passed"); \
   fhtw_free(t); \
   PASS(); }
